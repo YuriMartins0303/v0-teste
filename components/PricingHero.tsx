@@ -36,7 +36,7 @@ export const PricingHero = ({
         <span className="text-sm md:text-base text-muted-foreground">4.9/5 de 500+ restaurantes</span>
       </div>
 
-      <div className="max-w-2xl mx-auto space-y-4 md:space-y-6 mb-8 md:mb-12">
+      <div className="max-w-2xl mx-auto ">
         <div className="bg-card rounded-2xl p-4 md:p-6 shadow-[var(--shadow-card)]">
           <Label htmlFor="contacts" className="text-base md:text-lg font-semibold mb-3 block text-left">
             Quantos contatos você tem?
@@ -56,10 +56,8 @@ export const PricingHero = ({
           </Select>
         </div>
 
-        <div className="bg-card rounded-2xl p-4 md:p-6 shadow-[var(--shadow-card)]">
-          <Label className="text-base md:text-lg font-semibold mb-4 block text-left">
-            Escolha o período de pagamento
-          </Label>
+        <div className="bg-card rounded-2xl p-4  shadow-[var(--shadow-card)]">
+          
           <RadioGroup
             value={selectedPeriod}
             onValueChange={onPeriodChange}

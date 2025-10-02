@@ -36,7 +36,7 @@ export const PricingHero = ({
         <span className="text-sm md:text-base text-muted-foreground">4.9/5 de 500+ restaurantes</span>
       </div>
 
-      <div className="max-w-2xl mx-auto space-y-4 md:space-y-6 mb-8 md:mb-12">
+      <div className="max-w-2xl mx-auto space-y-4 md:space-y-6 mb-4 md:mb-6">
         <div className="bg-card rounded-2xl p-4 md:p-6 shadow-[var(--shadow-card)]">
           <Label htmlFor="contacts" className="text-base md:text-lg font-semibold mb-3 block text-left">
             Quantos contatos você tem?

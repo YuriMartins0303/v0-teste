@@ -34,7 +34,9 @@ export const Header = () => {
           </a>
         </nav>
 
-        <Button className="hidden md:flex font-semibold">Começar agora</Button>
+        <a href="https://whatsapp.glutoes.com/" target="_blank" rel="noopener noreferrer">
+          <Button className="hidden md:flex font-semibold">Começar agora</Button>
+        </a>
 
         <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle menu">
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -72,7 +74,9 @@ export const Header = () => {
             >
               Pricing
             </a>
-            <Button className="font-semibold w-full mt-2">Começar agora</Button>
+            <a href="https://whatsapp.glutoes.com/" target="_blank" rel="noopener noreferrer">
+              <Button className="font-semibold w-full mt-2">Começar agora</Button>
+            </a>
           </nav>
         </div>
       )}
