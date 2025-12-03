@@ -61,7 +61,7 @@ const Index = () => {
     if (contacts <= 2500) return "Starter"
     if (contacts <= 5000) return "Growth"
     if (contacts <= 10000) return "Pro"
-    return "Enterprise"
+    return "Ultra"
   }
 
   const recommendedPlan = getRecommendedPlan()
@@ -112,7 +112,7 @@ const Index = () => {
       recommended: recommendedPlan === "Pro",
     },
     {
-      title: "Enterprise",
+      title: "Ultra",
       price: {
         fullPrice: "Vamos conversar!",
         period: "",
@@ -125,9 +125,9 @@ const Index = () => {
         "Otimize a eficiência com testes A/B",
       ],
       ctaText: "Fale Conosco",
-      onCtaClick: () => handlePlanClick("Enterprise"),
-      isEnterprise: true,
-      recommended: recommendedPlan === "Enterprise",
+      onCtaClick: () => handlePlanClick("Ultra"),
+      isUltra: true,
+      recommended: recommendedPlan === "Ultra",
     },
   ]
 

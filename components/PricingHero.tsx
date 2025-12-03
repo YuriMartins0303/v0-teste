@@ -73,15 +73,6 @@ export const PricingHero = ({
               </Label>
             </div>
             <div className={cn(
-              "flex items-center space-x-2 bg-background px-4 md:px-6 py-3 rounded-xl border-2 transition-colors cursor-pointer",
-              selectedPeriod === "semiannual" ? "border-primary" : "border-border"
-            )}>
-              <RadioGroupItem value="semiannual" id="semiannual" />
-              <Label htmlFor="semiannual" className="cursor-pointer font-medium text-sm md:text-base">
-                Semestral
-              </Label>
-            </div>
-            <div className={cn(
               "flex items-center space-x-2 bg-background px-4 md:px-6 py-3 rounded-xl border-2 transition-colors cursor-pointer relative",
               selectedPeriod === "annual" ? "border-primary" : "border-border"
             )}>

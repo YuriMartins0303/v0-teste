@@ -200,7 +200,7 @@ export const ComparisonTable = () => {
                       <div className="text-xs md:text-sm text-muted-foreground mt-1">R$349/mês</div>
                     </th>
                     <th className="py-4 md:py-6 px-2 md:px-4 text-center min-w-[110px] md:min-w-0">
-                      <div className="font-bold text-sm md:text-lg text-foreground">Enterprise</div>
+                      <div className="font-bold text-sm md:text-lg text-foreground">Ultra</div>
                       <div className="text-xs md:text-sm text-muted-foreground mt-1">Personalizado</div>
                     </th>
                   </tr>

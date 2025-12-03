@@ -23,7 +23,7 @@ interface PricingCardProps {
   ctaLink?: string
   onCtaClick?: () => void
   recommended?: boolean
-  isEnterprise?: boolean
+  isUltra?: boolean
 }
 
 export const PricingCard = ({
@@ -36,7 +36,7 @@ export const PricingCard = ({
   ctaLink,
   onCtaClick,
   recommended = false,
-  isEnterprise = false,
+  isUltra = false,
 }: PricingCardProps) => {
   return (
     <div
@@ -123,7 +123,7 @@ export const PricingCard = ({
             recommended ? "text-white" : "text-foreground",
           )}
         >
-          {isEnterprise ? "Inclui todas as funcionalidades de Pro +" : "Inclui:"}
+          {isUltra ? "Inclui todas as funcionalidades de Pro +" : "Inclui:"}
         </p>
         {features.map((feature, index) => (
           <div key={index} className="flex items-start gap-2 md:gap-3">
