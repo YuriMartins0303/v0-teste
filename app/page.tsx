@@ -4,12 +4,15 @@ import { ComparisonTable } from "@/components/ComparisonTable"
 import { Header } from "@/components/Header"
 import { PricingCard } from "@/components/PricingCard"
 import { PricingHero } from "@/components/PricingHero"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState } from "react"
 
 export default function Home() {
   const [selectedContacts, setSelectedContacts] = useState("5000")
   const [selectedPeriod, setSelectedPeriod] = useState("monthly")
   const [hasAddOn, setHasAddOn] = useState(false)
+  const [selectedAddOnMessages, setSelectedAddOnMessages] = useState("1000")
+  const [hasFacebookAddOn, setHasFacebookAddOn] = useState(false)
 
   const priceData = {
     249: { monthly: 249, annual: 2490 },
@@ -40,16 +43,29 @@ export default function Home() {
     }
   }
 
-  const getRecommendedAddOn = () => {
-    const contacts = Number.parseInt(selectedContacts)
-    if (contacts <= 1000) return { messages: 1000, price: 100 }
-    if (contacts <= 2500) return { messages: 2000, price: 200 }
-    if (contacts <= 5000) return { messages: 3000, price: 300 }
-    if (contacts <= 10000) return { messages: 5000, price: 500 }
-    return { messages: 10000, price: 1000 }
+  // Opções de mensagens extras com preços
+  const addOnOptions = [
+    { messages: 1000, price: 99 },
+    { messages: 2000, price: 198 },
+    { messages: 3000, price: 297 },
+    { messages: 5000, price: 495 },
+    { messages: 10000, price: 990 }
+  ]
+
+  // Calcular preço do add-on baseado na seleção
+  const getAddOnPrice = () => {
+    const selected = addOnOptions.find(opt => opt.messages.toString() === selectedAddOnMessages)
+    return selected ? selected.price : 99
   }
 
-  const recommendedAddOn = getRecommendedAddOn()
+  // Calcular valor adicional por mensagem
+  const getAddOnPricePerMessage = () => {
+    const selected = addOnOptions.find(opt => opt.messages.toString() === selectedAddOnMessages)
+    if (!selected) return 0.099
+    return selected.price / selected.messages
+  }
+
+  const selectedAddOn = addOnOptions.find(opt => opt.messages.toString() === selectedAddOnMessages) || addOnOptions[0]
 
   const getRecommendedPlan = () => {
     const contacts = Number.parseInt(selectedContacts)
@@ -74,27 +90,36 @@ export default function Home() {
   }
 
   const handlePlanClick = (planTitle: string) => {
-    const planPrice = getPlanPrice(planTitle)
-    // Converter para centavos (Stripe trabalha com centavos)
-    const planPriceInCents = Math.round(planPrice * 100)
-    
     const params: Record<string, string> = {
       plano: planTitle,
       contatos: selectedContacts,
       periodo: selectedPeriod,
     }
 
-    // Só adiciona preço se for diferente de 0 (Ultra não tem preço fixo)
-    if (planPriceInCents > 0) {
-      params.plano_preco = planPriceInCents.toString()
-    }
-
     params.addon = hasAddOn ? 'true' : 'false'
     
     if (hasAddOn) {
-      params.addon_mensagens = recommendedAddOn.messages.toString()
-      // Converter add-on para centavos também
-      params.addon_preco = Math.round(recommendedAddOn.price * 100).toString()
+      params.addon_mensagens = selectedAddOnMessages
+    }
+
+    // Add-on Facebook Business Meta API
+    params.addon_facebook = hasFacebookAddOn ? 'true' : 'false'
+
+    const url = `http://localhost:3001/auth/plg-billing?${new URLSearchParams(params).toString()}`
+    window.location.href = url
+  }
+
+  const handleAddOnsPurchase = () => {
+    const params: Record<string, string> = {
+      plano: recommendedPlan,
+      contatos: selectedContacts,
+      periodo: selectedPeriod,
+      addon: hasAddOn ? 'true' : 'false',
+      addon_facebook: hasFacebookAddOn ? 'true' : 'false'
+    }
+
+    if (hasAddOn) {
+      params.addon_mensagens = selectedAddOnMessages
     }
 
     const url = `http://localhost:3001/auth/plg-billing?${new URLSearchParams(params).toString()}`
@@ -165,7 +190,7 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container mx-auto">
+      <main className={`container mx-auto ${(hasAddOn || hasFacebookAddOn) ? 'pb-28 sm:pb-24' : ''}`}>
         <PricingHero
           selectedContacts={selectedContacts}
           onContactsChange={setSelectedContacts}
@@ -197,12 +222,11 @@ export default function Home() {
             </p>
 
             <div 
-              className={`relative rounded-2xl border-2 p-6 md:p-8 transition-all duration-300 cursor-pointer ${
+              className={`relative rounded-2xl border-2 p-6 md:p-8 transition-all duration-300 ${
                 hasAddOn 
                   ? 'bg-gradient-to-br from-primary/5 to-accent/5 border-primary shadow-lg shadow-primary/10' 
                   : 'bg-card border-border/50 hover:border-primary/30 hover:shadow-md'
               }`}
-              onClick={() => setHasAddOn(!hasAddOn)}
             >
               {/* Indicador de selecionado */}
               {hasAddOn && (
@@ -224,17 +248,39 @@ export default function Home() {
                     </div>
                     <div>
                       <h3 className="text-lg md:text-xl font-bold">
-                        Régua de Relacionamento
+                        Marketing Suite
                       </h3>
                       <p className="text-xs text-muted-foreground">
                         Adicional ao plano {recommendedPlan}
                       </p>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground mb-4">
                     Amplie sua comunicação com mensagens adicionais para campanhas de WhatsApp.
                     Aumente o engajamento com seus clientes através de campanhas automatizadas e personalizadas.
                   </p>
+
+                  {/* Seletor de Mensagens */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <label className="text-sm font-semibold text-foreground">
+                      Mensagens extras:
+                    </label>
+                    <Select 
+                      value={selectedAddOnMessages} 
+                      onValueChange={setSelectedAddOnMessages}
+                    >
+                      <SelectTrigger className="w-full sm:w-[250px] h-11 border-2 border-primary/30 bg-primary/5 hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 font-medium text-foreground">
+                        <SelectValue placeholder="Selecione a quantidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {addOnOptions.map((option) => (
+                          <SelectItem key={option.messages} value={option.messages.toString()}>
+                            {option.messages.toLocaleString('pt-BR')} mensagens - R$ {option.price.toFixed(2).replace('.', ',')}/mês
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 {/* Preço e Botão */}
@@ -242,12 +288,12 @@ export default function Home() {
                   <div className="text-left sm:text-right lg:text-right">
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                        R$ {recommendedAddOn.price.toFixed(2).replace('.', ',')}
+                        R$ {getAddOnPrice().toFixed(2).replace('.', ',')}
                       </span>
                       <span className="text-muted-foreground font-medium">/mês</span>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {recommendedAddOn.messages.toLocaleString('pt-BR')} mensagens extras
+                      {selectedAddOn.messages.toLocaleString('pt-BR')} mensagens extras
                     </p>
                   </div>
 
@@ -255,29 +301,7 @@ export default function Home() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
-                      if (!hasAddOn) {
-                        // Redireciona diretamente para billing com addon=true
-                        const planPrice = getPlanPrice(recommendedPlan)
-                        const planPriceInCents = Math.round(planPrice * 100)
-                        
-                        const params: Record<string, string> = {
-                          plano: recommendedPlan,
-                          contatos: selectedContacts,
-                          periodo: selectedPeriod,
-                          addon: 'true',
-                          addon_mensagens: recommendedAddOn.messages.toString(),
-                          addon_preco: Math.round(recommendedAddOn.price * 100).toString()
-                        }
-
-                        if (planPriceInCents > 0) {
-                          params.plano_preco = planPriceInCents.toString()
-                        }
-
-                        const url = `http://localhost:3001/auth/plg-billing?${new URLSearchParams(params).toString()}`
-                        window.location.href = url
-                      } else {
-                        setHasAddOn(false)
-                      }
+                      setHasAddOn(!hasAddOn)
                     }}
                     className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 min-w-[160px] ${
                       hasAddOn
@@ -313,8 +337,112 @@ export default function Home() {
                     </svg>
                     <p className="text-muted-foreground">
                       <span className="font-semibold text-foreground">Este add-on será adicionado ao seu plano {recommendedPlan}.</span>{' '}
-                      Você terá {recommendedAddOn.messages.toLocaleString('pt-BR')} mensagens extras por mês além das incluídas no plano base. 
+                      Você terá {selectedAddOn.messages.toLocaleString('pt-BR')} mensagens extras por mês além das incluídas no plano base. 
                       O valor total será calculado na próxima etapa.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Add-on Facebook Business Meta API */}
+            <div 
+              className={`relative rounded-2xl border-2 p-6 md:p-8 transition-all duration-300 mt-6 ${
+                hasFacebookAddOn 
+                  ? 'bg-gradient-to-br from-primary/5 to-accent/5 border-primary shadow-lg shadow-primary/10' 
+                  : 'bg-card border-border/50 hover:border-primary/30 hover:shadow-md'
+              }`}
+            >
+              {/* Indicador de selecionado */}
+              {hasFacebookAddOn && (
+                <div className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center shadow-lg">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
+
+              <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+                {/* Info do Add-on */}
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg md:text-xl font-bold">
+                        Verificação e Ativação Facebook Business Meta API
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        Implantação única
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Configure e ative a integração completa com Facebook Business Meta API para seu negócio. 
+                    Nossa equipe realiza toda a verificação e configuração necessária para conectar sua conta 
+                    do Facebook Business ao sistema, permitindo campanhas avançadas e automações poderosas 
+                    através da plataforma Meta.
+                  </p>
+                </div>
+
+                {/* Preço e Botão */}
+                <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-start sm:items-center lg:items-end xl:items-center gap-4">
+                  <div className="text-left sm:text-right lg:text-right">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                        R$ 650,00
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Implantação única
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setHasFacebookAddOn(!hasFacebookAddOn)
+                    }}
+                    className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 min-w-[160px] ${
+                      hasFacebookAddOn
+                        ? 'bg-primary text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30'
+                        : 'bg-gradient-to-r from-primary to-accent text-white hover:shadow-lg hover:scale-105'
+                    }`}
+                  >
+                    {hasFacebookAddOn ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Adicionado
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Adicionar
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Explicação quando selecionado */}
+              {hasFacebookAddOn && (
+                <div className="mt-6 pt-6 border-t border-primary/20">
+                  <div className="flex items-start gap-3 text-sm">
+                    <svg className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-muted-foreground">
+                      <span className="font-semibold text-foreground">Este serviço de implantação será adicionado ao seu plano {recommendedPlan}.</span>{' '}
+                      Nossa equipe entrará em contato para realizar a verificação e ativação completa da integração 
+                      com Facebook Business Meta API. O valor de R$ 650,00 é uma taxa única de implantação.
                     </p>
                   </div>
                 </div>
@@ -325,10 +453,49 @@ export default function Home() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Disponível a partir de 12/25. O pacote é baseado no número de contatos selecionado.
+              Disponível a partir de 12/25. Escolha a quantidade de mensagens extras que deseja adicionar ao seu plano.
             </p>
           </div>
         </section>
+
+        {/* Botão fixo para adquirir add-ons */}
+        {(hasAddOn || hasFacebookAddOn) && (
+          <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border shadow-2xl z-50 px-4 py-3 sm:px-6 sm:py-4">
+            <div className="container mx-auto max-w-5xl">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div className="flex-1 w-full">
+                  <p className="text-xs sm:text-sm font-semibold text-foreground mb-2 sm:mb-1">
+                    Plano e add-ons selecionados
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                    <span className="px-2.5 py-1.5 bg-accent/20 text-accent font-semibold rounded-lg text-xs sm:text-xs border border-accent/30">
+                      Plano {recommendedPlan}
+                    </span>
+                    {hasAddOn && (
+                      <span className="px-2.5 py-1.5 bg-primary/10 text-primary font-medium rounded-lg text-xs sm:text-xs border border-primary/20">
+                        Marketing Suite - {selectedAddOn.messages.toLocaleString('pt-BR')} mensagens
+                      </span>
+                    )}
+                    {hasFacebookAddOn && (
+                      <span className="px-2.5 py-1.5 bg-primary/10 text-primary font-medium rounded-lg text-xs sm:text-xs border border-primary/20">
+                        Facebook Business Meta API
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={handleAddOnsPurchase}
+                  className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-3 bg-gradient-to-r from-primary to-accent text-white font-bold text-sm sm:text-base rounded-xl hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  Quero contratar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <ComparisonTable />
 
