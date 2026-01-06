@@ -2,7 +2,6 @@
 
 import { ComparisonTable } from "@/components/ComparisonTable"
 import { Header } from "@/components/Header"
-import { PricingCard } from "@/components/PricingCard"
 import { PricingHero } from "@/components/PricingHero"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState } from "react"
@@ -13,35 +12,7 @@ export default function Home() {
   const [hasAddOn, setHasAddOn] = useState(false)
   const [selectedAddOnMessages, setSelectedAddOnMessages] = useState("1000")
   const [hasFacebookAddOn, setHasFacebookAddOn] = useState(false)
-
-  const priceData = {
-    249: { monthly: 249, annual: 2490 },
-    319: { monthly: 319, annual: 3190 },
-    499: { monthly: 499, annual: 4990 }
-  }
-
-  const formatPrice = (basePrice: number) => {
-    const prices = priceData[basePrice as keyof typeof priceData]
-    
-    if (selectedPeriod === "monthly") {
-      return {
-        fullPrice: `R$ ${prices.monthly.toFixed(2).replace('.', ',')}`,
-        period: "/mês",
-        installments: undefined
-      }
-    } else {
-      const installment = prices.annual / 12
-      return {
-        fullPrice: `R$ ${prices.annual.toFixed(2).replace('.', ',')}`,
-        period: "",
-        installments: {
-          value: `R$ ${installment.toFixed(2).replace('.', ',')}`,
-          times: 12,
-          text: `em 12x no cartão`
-        }
-      }
-    }
-  }
+  const [hasChatbotAddOn, setHasChatbotAddOn] = useState(false)
 
   // Opções de mensagens extras com preços
   const addOnOptions = [
@@ -56,13 +27,6 @@ export default function Home() {
   const getAddOnPrice = () => {
     const selected = addOnOptions.find(opt => opt.messages.toString() === selectedAddOnMessages)
     return selected ? selected.price : 99
-  }
-
-  // Calcular valor adicional por mensagem
-  const getAddOnPricePerMessage = () => {
-    const selected = addOnOptions.find(opt => opt.messages.toString() === selectedAddOnMessages)
-    if (!selected) return 0.099
-    return selected.price / selected.messages
   }
 
   const selectedAddOn = addOnOptions.find(opt => opt.messages.toString() === selectedAddOnMessages) || addOnOptions[0]
@@ -89,24 +53,35 @@ export default function Home() {
     return selectedPeriod === 'monthly' ? planPrices.monthly : planPrices.annual
   }
 
-  const handlePlanClick = (planTitle: string) => {
-    const params: Record<string, string> = {
-      plano: planTitle,
-      contatos: selectedContacts,
-      periodo: selectedPeriod,
+  // Calcula preço do add-on considerando o período
+  const getAddOnPriceWithPeriod = () => {
+    const monthlyPrice = getAddOnPrice()
+    return selectedPeriod === 'monthly' ? monthlyPrice : monthlyPrice * 12
+  }
+
+  // Preço do chatbot de acordo com o plano
+  const getChatbotPrice = () => {
+    const chatbotPriceMap: Record<string, number> = {
+      'Starter': 149,
+      'Growth': 199,
+      'Pro': 299,
+      'Ultra': 399
     }
+    return chatbotPriceMap[recommendedPlan] || 199
+  }
 
-    params.addon = hasAddOn ? 'true' : 'false'
-    
-    if (hasAddOn) {
-      params.addon_mensagens = selectedAddOnMessages
-    }
+  // Calcula preço do chatbot considerando o período
+  const getChatbotPriceWithPeriod = () => {
+    const monthlyPrice = getChatbotPrice()
+    return selectedPeriod === 'monthly' ? monthlyPrice : monthlyPrice * 12
+  }
 
-    // Add-on Facebook Business Meta API
-    params.addon_facebook = hasFacebookAddOn ? 'true' : 'false'
-
-    const url = `http://localhost:3001/auth/plg-billing?${new URLSearchParams(params).toString()}`
-    window.location.href = url
+  // Calcula total
+  const getTotalPrice = () => {
+    let total = getPlanPrice(recommendedPlan)
+    if (hasAddOn) total += getAddOnPriceWithPeriod()
+    if (hasChatbotAddOn) total += getChatbotPriceWithPeriod()
+    return total
   }
 
   const handleAddOnsPurchase = () => {
@@ -115,7 +90,8 @@ export default function Home() {
       contatos: selectedContacts,
       periodo: selectedPeriod,
       addon: hasAddOn ? 'true' : 'false',
-      addon_facebook: hasFacebookAddOn ? 'true' : 'false'
+      addon_facebook: hasFacebookAddOn ? 'true' : 'false',
+      addon_chatbot: hasChatbotAddOn ? 'true' : 'false'
     }
 
     if (hasAddOn) {
@@ -126,71 +102,46 @@ export default function Home() {
     window.location.href = url
   }
 
-  const plans = [
-    {
-      title: "Starter",
-      price: formatPrice(249),
-      messages: "3000",
-      features: ["Painel de performance", "Piloto Automático de Campanhas", "Suporte online"],
-      ctaText: "Adquirir",
-      onCtaClick: () => handlePlanClick("Starter"),
-      recommended: recommendedPlan === "Starter",
-    },
-    {
-      title: "Growth",
-      price: formatPrice(319),
-      messages: "6000",
-      description: "Recupere clientes perdidos e aumente as vendas recorrentes com automação.",
-      features: [
-        "Todas as funcionalidades de Starter +",
-        "Mais campanhas personalizadas",
-        "Acesso a modelos prontos de mensagens",
-        "Programa de fidelidade automatizado integrado com cardápio digital",
-      ],
-      ctaText: "Adquirir",
-      onCtaClick: () => handlePlanClick("Growth"),
-      recommended: recommendedPlan === "Growth",
-    },
-    {
-      title: "Pro",
-      price: formatPrice(499),
-      messages: "10000",
-      description: "Acompanhamento estratégico completo para maximizar resultados.",
-      features: [
-        "Todas as funcionalidades de Growth +",
-        "Onboarding dedicado para você e seu time pelos nossos experts",
-        "Recomendações estratégicas do Gestor de Contas",
-        "Experiência guiada para atingir os objetivos de seus negócios",
-      ],
-      ctaText: "Adquirir",
-      onCtaClick: () => handlePlanClick("Pro"),
-      recommended: recommendedPlan === "Pro",
-    },
-    {
-      title: "Ultra",
-      price: {
-        fullPrice: "Vamos conversar!",
-        period: "",
-        installments: undefined
-      },
-      messages: "18000",
-      features: [
-        "Campanhas personalizadas ilimitadas",
-        "Número de engajamentos com contatos customizado",
-        "Otimize a eficiência com testes A/B",
-      ],
-      ctaText: "Fale Conosco",
-      onCtaClick: () => handlePlanClick("Ultra"),
-      isUltra: true,
-      recommended: recommendedPlan === "Ultra",
-    },
-  ]
+  // Benefícios por plano
+  const getPlanFeatures = () => {
+    switch (recommendedPlan) {
+      case 'Starter':
+        return [
+          'Painel de performance',
+          'Piloto Automático de Campanhas',
+          'Suporte online'
+        ]
+      case 'Growth':
+        return [
+          'Todas funcionalidades Starter +',
+          'Mais campanhas personalizadas',
+          'Modelos prontos de mensagens',
+          'Programa de fidelidade'
+        ]
+      case 'Pro':
+        return [
+          'Todas funcionalidades Growth +',
+          'Onboarding dedicado',
+          'Recomendações do Gestor',
+          'Experiência guiada'
+        ]
+      case 'Ultra':
+        return [
+          'Todas funcionalidades Pro +',
+          'Campanhas ilimitadas',
+          'Engajamentos customizados',
+          'Testes A/B'
+        ]
+      default:
+        return []
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className={`container mx-auto ${(hasAddOn || hasFacebookAddOn) ? 'pb-28 sm:pb-24' : ''}`}>
+      <main className="container mx-auto">
         <PricingHero
           selectedContacts={selectedContacts}
           onContactsChange={setSelectedContacts}
@@ -198,17 +149,169 @@ export default function Home() {
           onPeriodChange={setSelectedPeriod}
         />
 
+        {/* Seção de Resumo - Layout de 3 colunas */}
         <section className="px-4 pb-12 md:pb-16">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 max-w-7xl mx-auto">
-            {plans.map((plan, index) => (
-              <PricingCard key={index} {...plan} />
-            ))}
+          <div className="max-w-6xl mx-auto">
+            <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-lg">
+              <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+                
+                {/* Coluna 1 - Plano */}
+                <div className="p-6 md:p-8">
+                  <h3 className="text-xl font-bold text-foreground mb-1">Plano {recommendedPlan}</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Baseado em {Number(selectedContacts).toLocaleString('pt-BR')} contatos</p>
+
+                  <div className="mb-6">
+                    <span className="text-3xl font-bold text-foreground">
+                      R$ {getPlanPrice(recommendedPlan).toFixed(2).replace('.', ',')}
+                    </span>
+                    <span className="text-muted-foreground ml-1">por mês</span>
+                  </div>
+
+                  <div className="border-t border-border pt-4">
+                    <p className="text-sm font-semibold text-foreground mb-3">Inclui:</p>
+                    <div className="space-y-2">
+                      {getPlanFeatures().map((feature, index) => (
+                        <div key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <svg className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Coluna 2 - Marketing Suite Add-On */}
+                <div className="p-6 md:p-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-foreground">Marketing Suite</h3>
+                    <span className="px-2 py-1 bg-accent/10 text-accent text-xs font-semibold rounded">Add-on</span>
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground mb-3">Mensagens extras:</p>
+                  <div className="flex gap-2 mb-6">
+                    <Select value={hasAddOn ? selectedAddOnMessages : "0"} onValueChange={(val) => {
+                      if (val === "0") {
+                        setHasAddOn(false)
+                      } else {
+                        setHasAddOn(true)
+                        setSelectedAddOnMessages(val)
+                      }
+                    }}>
+                      <SelectTrigger className="w-full h-12 border-2 border-border hover:border-primary/50 font-medium">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Não incluir</SelectItem>
+                        {addOnOptions.map((option) => (
+                          <SelectItem key={option.messages} value={option.messages.toString()}>
+                            {option.messages.toLocaleString('pt-BR')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="mb-4">
+                    <span className="text-3xl font-bold text-foreground">
+                      R$ {hasAddOn ? getAddOnPrice().toFixed(2).replace('.', ',') : '0,00'}
+                    </span>
+                    <span className="text-muted-foreground ml-1">por mês</span>
+                  </div>
+
+                  <div className="text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Créditos acumulam para o próximo mês</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Coluna 3 - Total */}
+                <div className="p-6 md:p-8 bg-gradient-to-br from-primary/5 to-accent/5">
+                  <h3 className="text-xl font-bold text-primary mb-4">Total</h3>
+                  
+                  {/* Detalhamento dos valores */}
+                  <div className="space-y-2 mb-4 pb-4 border-b border-border/50">
+                    {/* Plano */}
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Plano {recommendedPlan}</span>
+                      <span className="font-medium">R$ {getPlanPrice(recommendedPlan).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    
+                    {/* Marketing Suite */}
+                    {hasAddOn && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Marketing Suite</span>
+                        <span className="font-medium text-primary">+ R$ {getAddOnPriceWithPeriod().toFixed(2).replace('.', ',')}</span>
+                      </div>
+                    )}
+                    
+                    {/* Chatbot */}
+                    {hasChatbotAddOn && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Chatbot Inteligente</span>
+                        <span className="font-medium text-primary">+ R$ {getChatbotPriceWithPeriod().toFixed(2).replace('.', ',')}</span>
+                      </div>
+                    )}
+                    
+                    {/* Facebook - Implantação única */}
+                    {hasFacebookAddOn && (
+                      <div className="flex justify-between items-center text-sm pt-2 border-t border-border/30">
+                        <span className="text-muted-foreground text-xs">Implantação única (Facebook)</span>
+                        <span className="font-medium text-xs">+ R$ 650,00</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Primeiro período (com implantação se houver) */}
+                  {hasFacebookAddOn ? (
+                    <div className="mb-4">
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <span className="text-3xl font-bold text-primary">
+                          R$ {(getTotalPrice() + 650).toFixed(2).replace('.', ',')}
+                        </span>
+                        <span className="text-muted-foreground text-sm">{selectedPeriod === 'monthly' ? 'no 1º mês' : 'no 1º ano'}</span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-lg font-semibold text-foreground">
+                          R$ {getTotalPrice().toFixed(2).replace('.', ',')}
+                        </span>
+                        <span className="text-muted-foreground text-xs">{selectedPeriod === 'monthly' ? '/mês após' : '/ano após'}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mb-6">
+                      <span className="text-4xl font-bold text-primary">
+                        R$ {getTotalPrice().toFixed(2).replace('.', ',')}
+                      </span>
+                      <span className="text-muted-foreground ml-1">{selectedPeriod === 'monthly' ? 'por mês' : 'por ano'}</span>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleAddOnsPurchase}
+                    className="w-full py-4 bg-gradient-to-r from-primary to-accent text-white font-bold text-base rounded-xl hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    Começar agora
+                  </button>
+
+                  <p className="text-xs text-muted-foreground mt-4 text-center">
+                    Cancele quando quiser
+                  </p>
+                </div>
+              </div>
+            </div>
+
           </div>
         </section>
 
         {/* Seção de Add-ons */}
         <section className="px-4 pb-12 md:pb-16">
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-3 mb-2">
               <h2 className="text-2xl md:text-3xl font-bold">
                 Add-ons
@@ -221,15 +324,15 @@ export default function Home() {
               Potencialize seu plano com recursos extras. Adicione ou remova a qualquer momento.
             </p>
 
+            {/* Add-on Chatbot */}
             <div 
-              className={`relative rounded-2xl border-2 p-6 md:p-8 transition-all duration-300 ${
-                hasAddOn 
+              className={`relative rounded-2xl border-2 p-6 md:p-8 transition-all duration-300 mb-6 ${
+                hasChatbotAddOn 
                   ? 'bg-gradient-to-br from-primary/5 to-accent/5 border-primary shadow-lg shadow-primary/10' 
                   : 'bg-card border-border/50 hover:border-primary/30 hover:shadow-md'
               }`}
             >
-              {/* Indicador de selecionado */}
-              {hasAddOn && (
+              {hasChatbotAddOn && (
                 <div className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center shadow-lg">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -238,78 +341,48 @@ export default function Home() {
               )}
 
               <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-                {/* Info do Add-on */}
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                       <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                     </div>
                     <div>
-                      <h3 className="text-lg md:text-xl font-bold">
-                        Marketing Suite
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        Adicional ao plano {recommendedPlan}
-                      </p>
+                      <h3 className="text-lg md:text-xl font-bold">Chatbot Inteligente</h3>
+                      <p className="text-xs text-muted-foreground">Atendimento automatizado 24/7</p>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Amplie sua comunicação com mensagens adicionais para campanhas de WhatsApp.
-                    Aumente o engajamento com seus clientes através de campanhas automatizadas e personalizadas.
+                  <p className="text-sm text-muted-foreground">
+                    Automatize o atendimento ao cliente com nosso chatbot inteligente. Responda dúvidas frequentes, 
+                    receba pedidos e qualifique leads automaticamente, 24 horas por dia, 7 dias por semana. 
+                    Integrado diretamente ao WhatsApp do seu restaurante.
                   </p>
-
-                  {/* Seletor de Mensagens */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <label className="text-sm font-semibold text-foreground">
-                      Mensagens extras:
-                    </label>
-                    <Select 
-                      value={selectedAddOnMessages} 
-                      onValueChange={setSelectedAddOnMessages}
-                    >
-                      <SelectTrigger className="w-full sm:w-[250px] h-11 border-2 border-primary/30 bg-primary/5 hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 font-medium text-foreground">
-                        <SelectValue placeholder="Selecione a quantidade" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {addOnOptions.map((option) => (
-                          <SelectItem key={option.messages} value={option.messages.toString()}>
-                            {option.messages.toLocaleString('pt-BR')} mensagens - R$ {option.price.toFixed(2).replace('.', ',')}/mês
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
 
-                {/* Preço e Botão */}
                 <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-start sm:items-center lg:items-end xl:items-center gap-4">
                   <div className="text-left sm:text-right lg:text-right">
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                        R$ {getAddOnPrice().toFixed(2).replace('.', ',')}
+                        R$ {getChatbotPrice().toFixed(2).replace('.', ',')}
                       </span>
                       <span className="text-muted-foreground font-medium">/mês</span>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {selectedAddOn.messages.toLocaleString('pt-BR')} mensagens extras
+                      Atendimento ilimitado
                     </p>
                   </div>
 
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setHasAddOn(!hasAddOn)
-                    }}
+                    onClick={() => setHasChatbotAddOn(!hasChatbotAddOn)}
                     className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 min-w-[160px] ${
-                      hasAddOn
-                        ? 'bg-primary text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30'
+                      hasChatbotAddOn
+                        ? 'bg-primary text-white shadow-lg shadow-primary/25 hover:shadow-xl'
                         : 'bg-gradient-to-r from-primary to-accent text-white hover:shadow-lg hover:scale-105'
                     }`}
                   >
-                    {hasAddOn ? (
+                    {hasChatbotAddOn ? (
                       <span className="flex items-center justify-center gap-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -328,17 +401,15 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Explicação quando selecionado */}
-              {hasAddOn && (
+              {hasChatbotAddOn && (
                 <div className="mt-6 pt-6 border-t border-primary/20">
                   <div className="flex items-start gap-3 text-sm">
                     <svg className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <p className="text-muted-foreground">
-                      <span className="font-semibold text-foreground">Este add-on será adicionado ao seu plano {recommendedPlan}.</span>{' '}
-                      Você terá {selectedAddOn.messages.toLocaleString('pt-BR')} mensagens extras por mês além das incluídas no plano base. 
-                      O valor total será calculado na próxima etapa.
+                      <span className="font-semibold text-foreground">O Chatbot será ativado em seu WhatsApp.</span>{' '}
+                      Nossa equipe entrará em contato para configurar o chatbot de acordo com as necessidades do seu restaurante.
                     </p>
                   </div>
                 </div>
@@ -347,13 +418,12 @@ export default function Home() {
 
             {/* Add-on Facebook Business Meta API */}
             <div 
-              className={`relative rounded-2xl border-2 p-6 md:p-8 transition-all duration-300 mt-6 ${
+              className={`relative rounded-2xl border-2 p-6 md:p-8 transition-all duration-300 ${
                 hasFacebookAddOn 
                   ? 'bg-gradient-to-br from-primary/5 to-accent/5 border-primary shadow-lg shadow-primary/10' 
                   : 'bg-card border-border/50 hover:border-primary/30 hover:shadow-md'
               }`}
             >
-              {/* Indicador de selecionado */}
               {hasFacebookAddOn && (
                 <div className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center shadow-lg">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,7 +433,6 @@ export default function Home() {
               )}
 
               <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-                {/* Info do Add-on */}
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
@@ -372,12 +441,8 @@ export default function Home() {
                       </svg>
                     </div>
                     <div>
-                      <h3 className="text-lg md:text-xl font-bold">
-                        Verificação e Ativação Facebook Business Meta API
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        Implantação única
-                      </p>
+                      <h3 className="text-lg md:text-xl font-bold">Verificação e Ativação Facebook Business Meta API</h3>
+                      <p className="text-xs text-muted-foreground">Implantação única</p>
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground">
@@ -388,7 +453,6 @@ export default function Home() {
                   </p>
                 </div>
 
-                {/* Preço e Botão */}
                 <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-start sm:items-center lg:items-end xl:items-center gap-4">
                   <div className="text-left sm:text-right lg:text-right">
                     <div className="flex items-baseline gap-1">
@@ -403,13 +467,10 @@ export default function Home() {
 
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setHasFacebookAddOn(!hasFacebookAddOn)
-                    }}
+                    onClick={() => setHasFacebookAddOn(!hasFacebookAddOn)}
                     className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 min-w-[160px] ${
                       hasFacebookAddOn
-                        ? 'bg-primary text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30'
+                        ? 'bg-primary text-white shadow-lg shadow-primary/25 hover:shadow-xl'
                         : 'bg-gradient-to-r from-primary to-accent text-white hover:shadow-lg hover:scale-105'
                     }`}
                   >
@@ -432,7 +493,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Explicação quando selecionado */}
               {hasFacebookAddOn && (
                 <div className="mt-6 pt-6 border-t border-primary/20">
                   <div className="flex items-start gap-3 text-sm">
@@ -448,54 +508,8 @@ export default function Home() {
                 </div>
               )}
             </div>
-
-            <p className="text-xs text-muted-foreground mt-4 flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Disponível a partir de 12/25. Escolha a quantidade de mensagens extras que deseja adicionar ao seu plano.
-            </p>
           </div>
         </section>
-
-        {/* Botão fixo para adquirir add-ons */}
-        {(hasAddOn || hasFacebookAddOn) && (
-          <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border shadow-2xl z-50 px-4 py-3 sm:px-6 sm:py-4">
-            <div className="container mx-auto max-w-5xl">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <div className="flex-1 w-full">
-                  <p className="text-xs sm:text-sm font-semibold text-foreground mb-2 sm:mb-1">
-                    Plano e add-ons selecionados
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                    <span className="px-2.5 py-1.5 bg-accent/20 text-accent font-semibold rounded-lg text-xs sm:text-xs border border-accent/30">
-                      Plano {recommendedPlan}
-                    </span>
-                    {hasAddOn && (
-                      <span className="px-2.5 py-1.5 bg-primary/10 text-primary font-medium rounded-lg text-xs sm:text-xs border border-primary/20">
-                        Marketing Suite - {selectedAddOn.messages.toLocaleString('pt-BR')} mensagens
-                      </span>
-                    )}
-                    {hasFacebookAddOn && (
-                      <span className="px-2.5 py-1.5 bg-primary/10 text-primary font-medium rounded-lg text-xs sm:text-xs border border-primary/20">
-                        Facebook Business Meta API
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={handleAddOnsPurchase}
-                  className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-3 bg-gradient-to-r from-primary to-accent text-white font-bold text-sm sm:text-base rounded-xl hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  Quero contratar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         <ComparisonTable />
 
